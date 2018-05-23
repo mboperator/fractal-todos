@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route, Link } from 'react-router-dom';
 import { Input, Card, Page, Box, ToolHeader, Tabs, FlexList } from '@procore/core-react';
 import SingleExample from './SingleExample';
 import ListExample from './ListExample';
+import ListOfListsExample from './ListOfListsExample';
 import logo from './logo.svg';
 import './App.css';
 
@@ -40,7 +41,7 @@ class App extends Component {
             <Page.Body>
               <Route exact path="/" component={SingleExample} />
               <Route exact path="/list" component={ListExample} />
-              <Route exact path="/listOfLists" component={SingleExample} />
+              <Route exact path="/listOfLists" component={ListOfListsExample} />
             </Page.Body>
           </Page.Main>
         </Page>

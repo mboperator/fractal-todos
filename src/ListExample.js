@@ -10,27 +10,70 @@ import { itemModel, TodoItem } from './SingleExample';
 import Connect from './Connect';
 import ChildConnect from './ChildConnect';
 
-const listModel = createModule({
+export const todoListModel = createModule({
   name: 'todoList',
   initialState: {
+    id: v4(),
+    name: '',
     todos: [],
   },
   transformations: {
     init: s => s,
-    addTodo: ({ todos }, { payload: todo }) => ({ todos: todos.concat({ ...todo, id: v4() }) }),
-    removeTodo: ({ todos }, { payload: id }) => ({ todos: todos.filter(t => t.id !== id) }),
-    updateTodo: ({ todos }, { payload, meta }) => {
+    addTodo: ({ todos, ...state }, { payload: todo }) => ({ todos: todos.concat({ ...todo, id: v4() }), ...state }),
+    removeTodo: ({ todos, ...state }, { payload: id }) => ({ todos: todos.filter(t => t.id !== id), ...state }),
+    updateTodo: ({ todos, ...state }, { payload, meta }) => {
       const todoToUpdate = todos.find(todos => todos.id === meta.id);
       const updatedTodo = itemModel.reducer(todoToUpdate, payload.action);
       const updatedState = {
-        todos: todos.map(t => t.id === meta.id ? updatedTodo : t)
+        todos: todos.map(t => t.id === meta.id ? updatedTodo : t),
+        ...state
       };
       return updatedState;
     },
   },
 });
 
-const store = createStore(listModel.reducer, { todos: [] });
+const store = createStore(todoListModel.reducer, { todos: [] });
+
+export const TodoList = ({ name, actions, todos }) => (
+  <FlexList direction="column">
+    <h2>{name}</h2>
+    <FormState>
+      {({ title, description, update, clear }) => (
+        <FlexList direction="column">
+          <Input
+            placeholder="Title"
+            onChange={({ target }) => update('title', target.value)}
+            value={title}
+          />
+          <Input
+            placeholder="Description"
+            onChange={({ target }) => update('description', target.value)}
+            value={description}
+          />
+          <FlexList>
+            <Button onClick={() => {
+              actions.addTodo({ title, description });
+              clear();
+            }}>
+              Add Todo
+            </Button>
+            <Button onClick={clear} variant="secondary">
+              Clear
+            </Button>
+          </FlexList>
+        </FlexList>
+      )}
+    </FormState>
+    {todos.map(todo => (
+      <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
+        {childActions => (
+          <TodoItem {...todo} actions={childActions} />
+        )}
+      </ChildConnect>
+    ))}
+  </FlexList>
+)
 
 const FormState = withStateHandlers({}, {
   update: (state) => (attr, value) => ({ ...state, [attr]: value }),
@@ -39,44 +82,9 @@ const FormState = withStateHandlers({}, {
 
 const ListExample = () => (
   <Provider store={store}>
-    <Connect selector={s => s} actions={listModel.actions}>
+    <Connect selector={s => s} actions={todoListModel.actions}>
       {({ actions, ...state }) => (
-        <FlexList>
-          <FormState>
-            {({ title, description, update, clear }) => (
-              <FlexList direction="column">
-                <Input
-                  placeholder="Title"
-                  onChange={({ target }) => update('title', target.value)}
-                  value={title}
-                />
-                <Input
-                  placeholder="Description"
-                  onChange={({ target }) => update('description', target.value)}
-                  value={description}
-                />
-                <FlexList>
-                  <Button onClick={() => {
-                    actions.addTodo({ title, description });
-                    clear();
-                  }}>
-                    Add Todo
-                  </Button>
-                  <Button onClick={clear} variant="secondary">
-                    Clear
-                  </Button>
-                </FlexList>
-              </FlexList>
-            )}
-          </FormState>
-          {state.todos.map(todo => (
-            <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
-              {childActions => (
-                <TodoItem {...todo} actions={childActions} />
-              )}
-            </ChildConnect>
-          ))}
-        </FlexList>
+        <TodoList actions={actions} {...state} />
       )}
     </Connect>
   </Provider>
