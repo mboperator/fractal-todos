@@ -22,10 +22,22 @@ const store = createStore(itemModel.reducer, {});
 export const TodoItem = ({
   title = 'Create Mock APIs',
   status = 'IN_PROGRESS',
-  description = 'Mock APIs for state management.'
+  description = 'Mock APIs for state management.',
+  actions: { updateStatus }
 }) => (
   <Card>
-    <Card.TipHeader>
+    <Card.TipHeader
+      style={{
+        backgroundColor: status === 'IN_PROGRESS'
+          ? 'papayawhip'
+          : 'mediumspringgreen'
+      }}
+      onClick={() =>
+        status === 'IN_PROGRESS'
+          ? updateStatus('COMPLETE')
+          : updateStatus('IN_PROGRESS')
+      }
+    >
       <Card.TipHeaderContent>
         <Card.TipHeaderTitle>{title}</Card.TipHeaderTitle>
       </Card.TipHeaderContent>

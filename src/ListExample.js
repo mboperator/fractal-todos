@@ -8,6 +8,7 @@ import { Provider } from 'react-redux';
 
 import { itemModel, TodoItem } from './SingleExample';
 import Connect from './Connect';
+import ChildConnect from './ChildConnect';
 
 const listModel = createModule({
   name: 'todoList',
@@ -69,9 +70,11 @@ const ListExample = () => (
             )}
           </FormState>
           {state.todos.map(todo => (
-            <TodoItem
-              {...todo}
-            />
+            <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
+              {childActions => (
+                <TodoItem {...todo} actions={childActions} />
+              )}
+            </ChildConnect>
           ))}
         </FlexList>
       )}
