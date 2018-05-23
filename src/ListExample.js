@@ -36,43 +36,45 @@ export const todoListModel = createModule({
 const store = createStore(todoListModel.reducer, { todos: [] });
 
 export const TodoList = ({ name, actions, todos }) => (
-  <FlexList direction="column">
-    <h2>{name}</h2>
-    <FormState>
-      {({ title, description, update, clear }) => (
-        <FlexList direction="column">
-          <Input
-            placeholder="Title"
-            onChange={({ target }) => update('title', target.value)}
-            value={title}
-          />
-          <Input
-            placeholder="Description"
-            onChange={({ target }) => update('description', target.value)}
-            value={description}
-          />
-          <FlexList>
-            <Button onClick={() => {
-              actions.addTodo({ title, description });
-              clear();
-            }}>
-              Add Todo
-            </Button>
-            <Button onClick={clear} variant="secondary">
-              Clear
-            </Button>
+  <Box padding="md">
+    <FlexList direction="column">
+      <h2>{name}</h2>
+      <FormState>
+        {({ title, description, update, clear }) => (
+          <FlexList direction="column">
+            <Input
+              placeholder="Title"
+              onChange={({ target }) => update('title', target.value)}
+              value={title}
+            />
+            <Input
+              placeholder="Description"
+              onChange={({ target }) => update('description', target.value)}
+              value={description}
+            />
+            <FlexList>
+              <Button onClick={() => {
+                actions.addTodo({ title, description });
+                clear();
+              }}>
+                Add Todo
+              </Button>
+              <Button onClick={clear} variant="secondary">
+                Clear
+              </Button>
+            </FlexList>
           </FlexList>
-        </FlexList>
-      )}
-    </FormState>
-    {todos.map(todo => (
-      <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
-        {childActions => (
-          <TodoItem {...todo} actions={childActions} />
         )}
-      </ChildConnect>
-    ))}
-  </FlexList>
+      </FormState>
+      {todos.map(todo => (
+        <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
+          {childActions => (
+            <TodoItem {...todo} actions={childActions} />
+          )}
+        </ChildConnect>
+      ))}
+    </FlexList>
+  </Box>
 )
 
 const FormState = withStateHandlers({}, {

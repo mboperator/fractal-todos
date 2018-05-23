@@ -73,7 +73,7 @@ const ListExample = () => (
             </FormState>
           </Flex>
           <Box padding="md">
-            <FlexList justifyContent="center">
+            <FlexList justifyContent="center" alignItems='center"'>
               {state.lists.map(list => (
                 <ChildConnect actions={todoListModel.actions} dispatch={actions.updateList} meta={{ id: list.id }}>
                   {childActions => (
