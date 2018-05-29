@@ -9,6 +9,22 @@ import { Provider } from 'react-redux';
 import { itemModel, TodoItem } from './SingleExample';
 import Connect from './Connect';
 import ChildConnect from './ChildConnect';
+import T from './torrey';
+import { lensPath, set, view } from 'ramda';
+
+const getIn = path => input => view(lensPath(path), input);
+const setIn = (path, value) => input => set(lensPath(path), value)(input);
+
+const pathReducer = (childModels) => (state, action) => {
+  if (action.path) {
+    const [pathToFetch, ...remainingPath] = action.path;
+    const slice = getIn(pathToFetch)(state);
+    const childModel = childModels.find(child => child.name === pathToFetch[0]);
+    const updatedSlice = childModel.reducer(slice, { ...action, path: remainingPath });
+    return setIn(pathToFetch, updatedSlice)(state);
+  }
+  return state;
+};
 
 export const todoListModel = createModule({
   name: 'todoList',
@@ -17,6 +33,9 @@ export const todoListModel = createModule({
     name: '',
     todos: [],
   },
+  composes: [
+    pathReducer([itemModel]),
+  ],
   transformations: {
     init: s => s,
     addTodo: ({ todos, ...state }, { payload: todo }) => ({ todos: todos.concat({ ...todo, id: v4() }), ...state }),
@@ -67,11 +86,11 @@ export const TodoList = ({ name, actions, todos }) => (
         )}
       </FormState>
       {todos.map(todo => (
-        <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
+        <T.Leaf dispatch={actions.updateTodo} model={itemModel} path={['todos', todo.id]}>
           {childActions => (
             <TodoItem {...todo} actions={childActions} />
           )}
-        </ChildConnect>
+        </T.Leaf>
       ))}
     </FlexList>
   </Box>
@@ -84,11 +103,11 @@ const FormState = withStateHandlers({}, {
 
 const ListExample = () => (
   <Provider store={store}>
-    <Connect selector={s => s} actions={todoListModel.actions}>
+    <T.Root model={todoListModel}>
       {({ actions, ...state }) => (
         <TodoList actions={actions} {...state} />
       )}
-    </Connect>
+    </T.Root>
   </Provider>
 );
 

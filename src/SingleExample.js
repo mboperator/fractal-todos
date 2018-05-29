@@ -5,6 +5,8 @@ import { createStore } from 'redux';
 import { createModule } from 'redux-modules';
 import { Provider } from 'react-redux';
 import Connect from './Connect';
+import T from './torrey';
+
 
 export const itemModel = createModule({
   name: 'todoItem',
@@ -50,25 +52,25 @@ export const TodoItem = ({
 
 const SingleExample = () => (
   <Provider store={store}>
-    <Connect selector={s => s} actions={itemModel.actions}>
-      {({ actions, ...state }) => (
+    <T.Root model={itemModel}>
+      {({ actions, ...item }) => (
         <FlexList>
           <FlexList direction="column">
             <Input
               placeholder="Title"
               onChange={({ target }) => actions.updateTitle(target.value)}
-              value={state.title}
+              value={item.title}
             />
             <Input
               placeholder="Description"
               onChange={({ target }) => actions.updateDescription(target.value)}
-              value={state.description}
+              value={item.description}
             />
           </FlexList>
-          <TodoItem {...state} actions={actions} />
+          <TodoItem {...item} actions={actions} />
         </FlexList>
       )}
-    </Connect>
+    </T.Root>
   </Provider>
 );
 
