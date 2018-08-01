@@ -5835,6 +5835,10 @@ reduce-function-call@^1.0.1:
   dependencies:
     balanced-match "^0.4.2"
 
+redux-loop@^4.3.3:
+  version "4.3.3"
+  resolved "https://registry.yarnpkg.com/redux-loop/-/redux-loop-4.3.3.tgz#3a77d97362f379dab83a07c41f54bc27d4e9baad"
+
 redux-modules@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/redux-modules/-/redux-modules-1.1.0.tgz#5565dd1717eb94fa3da50b38871699034426e366"
