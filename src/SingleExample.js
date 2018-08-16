@@ -18,7 +18,7 @@ const post = (url, payload) => new Promise((resolve) =>
 const del = (url) => new Promise((resolve) =>
   setTimeout(() => {
     const mockResponse = { status: 200, body: { item: { _deleted: true } } }
-    console.log('post::', url, mockResponse)
+    console.log('del::', url, mockResponse)
     resolve(mockResponse)
   }, 500)
 )

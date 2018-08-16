@@ -30,7 +30,6 @@ export const todoListModel = createModule({
   composes: [liftState],
   transformations: {
     init: (state, { payload }) => {
-      console.log('todoList::init', payload)
       return [
         { ...state, urls: { todos: payload.urls.todos } },
         Cmd.none
