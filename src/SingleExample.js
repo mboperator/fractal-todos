@@ -128,12 +128,12 @@ const SingleExample = () => (
             <Input
               placeholder="Title"
               onBlur={({ target }) => actions.updateTitle(target.value)}
-              value={state.title}
+              defaultValue={state.title}
             />
             <Input
               placeholder="Description"
               onBlur={({ target }) => actions.updateDescription(target.value)}
-              value={state.description}
+              defaultValue={state.description}
             />
           </FlexList>
           <StandaloneTodoItem {...state} actions={actions} />

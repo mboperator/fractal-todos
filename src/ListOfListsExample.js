@@ -74,12 +74,12 @@ const List = ({ actions, lists }) => (
             <Input
               placeholder="Name"
               onChange={({ target }) => update('name', target.value)}
-              value={name}
+              defaultValue={name}
             />
             <Input
               placeholder="Description"
               onChange={({ target }) => update('description', target.value)}
-              value={description}
+              defaultValue={description}
             />
             <FlexList>
               <Button onClick={() => {
@@ -99,7 +99,7 @@ const List = ({ actions, lists }) => (
     <Box padding="md">
       <FlexList justifyContent="center" alignItems='center"'>
         {lists.map(list => (
-          <ChildConnect actions={todoListModel.actions} dispatch={actions.updateList} meta={{ id: list.id }}>
+          <ChildConnect key={list.id} actions={todoListModel.actions} dispatch={actions.updateList} meta={{ id: list.id }}>
             {childActions => (
               <TodoList {...list} actions={childActions} />
             )}

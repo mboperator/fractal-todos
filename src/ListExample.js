@@ -82,12 +82,12 @@ export const TodoList = ({ name, actions, todos }) => (
             <Input
               placeholder="Title"
               onChange={({ target }) => update('title', target.value)}
-              value={title}
+              defaultValue={title}
             />
             <Input
               placeholder="Description"
               onChange={({ target }) => update('description', target.value)}
-              value={description}
+              defaultValue={description}
             />
             <FlexList>
               <Button onClick={() => {
@@ -104,7 +104,7 @@ export const TodoList = ({ name, actions, todos }) => (
         )}
       </FormState>
       {todos.map(todo => (
-        <ChildConnect actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
+        <ChildConnect key={todo.id} actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
           {childActions => (
             <TodoItem {...todo} actions={childActions} />
           )}
