@@ -12,6 +12,7 @@
     "react-scripts": "1.1.4",
     "recompose": "^0.27.0",
     "redux": "^4.0.0",
+    "redux-loop": "^4.3.3",
     "redux-modules": "^1.1.0"
   },
   "scripts": {

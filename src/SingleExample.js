@@ -1,22 +1,87 @@
 import React from 'react';
+import { lifecycle } from 'recompose';
 import { Input, Card, Box, FlexList } from '@procore/core-react';
-
-import { createStore } from 'redux';
 import { createModule } from 'redux-modules';
+import { install, Cmd, loop, liftState } from 'redux-loop';
+import { createStore } from 'redux';
 import { Provider } from 'react-redux';
 import Connect from './Connect';
+
+const post = (url, payload) => new Promise((resolve) =>
+  setTimeout(() => {
+    const mockResponse = { status: 200, body: { item: payload } }
+    console.log('post::', url, mockResponse)
+    resolve(mockResponse)
+  }, 500)
+)
+
+const del = (url) => new Promise((resolve) =>
+  setTimeout(() => {
+    const mockResponse = { status: 200, body: { item: { _deleted: true } } }
+    console.log('del::', url, mockResponse)
+    resolve(mockResponse)
+  }, 500)
+)
 
 export const itemModel = createModule({
   name: 'todoItem',
   initialState: { title: '', status: 'IN_PROGRESS', description : '' },
+  composes: [liftState],
   transformations: {
-    updateTitle: (state, { payload: title }) => ({ ...state, title }),
-    updateDescription: (state, { payload: description }) => ({ ...state, description }),
-    updateStatus: (state, { payload: status }) => ({ ...state, status }),
+    init: (state, { payload }) =>
+      ({ ...state, urls: { self: payload.urls.self } }),
+    updateTitle: (state, { payload: title }) => [
+      { ...state, title },
+      Cmd.run(
+        post,
+        {
+          args: [state.urls.self, { title } ],
+          successActionCreator: itemModel.actions.updateSuccess,
+          failActionCreator: itemModel.actions.updateFail
+        }
+      )
+    ],
+    updateDescription: (state, { payload: description }) => [
+      { ...state, description },
+      Cmd.run(
+        post,
+        {
+          args: [state.urls.self, { description } ],
+          successActionCreator: itemModel.actions.updateSuccess,
+          failActionCreator: itemModel.actions.updateFail
+        }
+      )
+    ],
+    updateStatus: (state, { payload: status }) => [
+      { ...state, status },
+      Cmd.run(
+        post,
+        {
+          args: [state.urls.self, { status } ],
+          successActionCreator: itemModel.actions.updateSuccess,
+          failActionCreator: itemModel.actions.updateFail
+        }
+      )
+    ],
+    updateSuccess: (state, { payload: response }) =>
+      ({ ...state, ...response.body.item }),
+    updateFail: (state, { payload: error }) =>
+      ({ ...state, error }),
+    updateStatus: (state, { payload: status }) => [
+      { ...state, status },
+      Cmd.run(
+        del,
+        {
+          args: [state.urls.self],
+          successActionCreator: itemModel.actions.updateSuccess,
+          failActionCreator: itemModel.actions.updateFail
+        }
+      )
+    ],
   },
 });
 
-const store = createStore(itemModel.reducer, {});
+const store = createStore(itemModel.reducer, {}, install());
 
 
 export const TodoItem = ({
@@ -48,6 +113,12 @@ export const TodoItem = ({
   </Card>
 );
 
+const StandaloneTodoItem = lifecycle({
+  componentWillMount() {
+    this.props.actions.init({ urls: { self: 'item' } })
+  }
+})(TodoItem)
+
 const SingleExample = () => (
   <Provider store={store}>
     <Connect selector={s => s} actions={itemModel.actions}>
@@ -56,16 +127,16 @@ const SingleExample = () => (
           <FlexList direction="column">
             <Input
               placeholder="Title"
-              onChange={({ target }) => actions.updateTitle(target.value)}
-              value={state.title}
+              onBlur={({ target }) => actions.updateTitle(target.value)}
+              defaultValue={state.title}
             />
             <Input
               placeholder="Description"
-              onChange={({ target }) => actions.updateDescription(target.value)}
-              value={state.description}
+              onBlur={({ target }) => actions.updateDescription(target.value)}
+              defaultValue={state.description}
             />
           </FlexList>
-          <TodoItem {...state} actions={actions} />
+          <StandaloneTodoItem {...state} actions={actions} />
         </FlexList>
       )}
     </Connect>
