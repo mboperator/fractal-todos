@@ -29,7 +29,13 @@ export const todoListModel = createModule({
   },
   composes: [liftState],
   transformations: {
-    init: (state, { payload }) => ({ ...state, urls: { todos: payload.endpoint } }),
+    init: (state, { payload }) => {
+      console.log('todoList::init', payload)
+      return [
+        { ...state, urls: { todos: payload.urls.todos } },
+        Cmd.none
+      ]
+    },
     addTodo: ({ todos, ...state }, { payload: todo }) => {
       const id = `optimistic-${v4()}`
       return [
@@ -110,7 +116,7 @@ export const TodoList = ({ name, actions, todos }) => (
 
 const StandaloneTodoList = lifecycle({
   componentWillMount() {
-    this.props.actions.init({ endpoint: 'todos' })
+    this.props.actions.init({ urls: { todos: 'todos' } })
   }
 })(TodoList)
 
