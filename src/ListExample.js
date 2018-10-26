@@ -1,16 +1,10 @@
 import React from 'react';
 import { v4 } from 'uuid';
-import { lifecycle } from 'recompose';
-import { Button, Input, Card, Box, FlexList } from '@procore/core-react';
+import { Button, Input, Box, FlexList } from '@procore/core-react';
 import { withStateHandlers } from 'recompose';
-import { createStore } from 'redux';
-import { createModule } from 'redux-modules';
-import { install, Cmd, loop, liftState } from 'redux-loop';
-import { Provider } from 'react-redux';
-
-import { itemModel, TodoItem } from './SingleExample';
-import Connect from './Connect';
-import ChildConnect from './ChildConnect';
+import { types } from "mobx-state-tree"
+import { observer } from "mobx-react"
+import TodoItem, { Todo } from './SingleExample';
 
 const post = (url, payload) => new Promise((resolve) =>
   setTimeout(() => {
@@ -20,61 +14,32 @@ const post = (url, payload) => new Promise((resolve) =>
   }, 500)
 )
 
-export const todoListModel = createModule({
-  name: 'todoList',
-  initialState: {
-    id: v4(),
-    name: '',
-    todos: [],
+const TodoListModel = types
+  .model("TodoList", {
+    id: types.identifier,
+    name: types.string,
+    todos: types.array(Todo),
+  })
+
+export const TodoList = TodoListModel.actions(list => ({
+  addTodo: (todo) => {
+    list.todos.push(todo)
   },
-  composes: [liftState],
-  transformations: {
-    init: (state, { payload }) => {
-      return [
-        { ...state, urls: { todos: payload.urls.todos } },
-        Cmd.none
-      ]
-    },
-    addTodo: ({ todos, ...state }, { payload: todo }) => {
-      const id = `optimistic-${v4()}`
-      return [
-        // Optimistic Update
-        { todos: todos.concat({ ...todo, id }), ...state },
-        Cmd.run(post, {
-          args: [state.urls.todos, todo],
-          // Update the optimistic version of the added todo item
-          successActionCreator: response =>
-            todoListModel.actions.updateTodo({ action: itemModel.actions.init(response.body.item) }, { id }),
-          failActionCreator: todoListModel.actions.addTodoFail,
-        })
-      ]
-    },
-    addTodoFail: (state, { payload: error }) => state,
-    removeTodo: ({ todos, ...state }, { payload: id }) => [
-      ({ todos: todos.filter(t => t.id !== id), ...state }),
-      Cmd.action(todoListModel.updateTodo(itemModel.actions.destroy(), { id }))
-    ],
-    updateTodo: ({ todos, ...state }, { payload, meta }) => {
-      const todoToUpdate = todos.find(todos => todos.id === meta.id);
-      const [updatedTodo, todoEffects] = itemModel.reducer(todoToUpdate, payload.action);
-      const updatedState = {
-        todos: todos.map(t => t.id === meta.id ? updatedTodo : t),
-        ...state
-      };
-      return loop(
-        updatedState,
-        Cmd.map(todoEffects, action => todoListModel.actions.updateTodo({ action }, { id: meta.id }))
-      );
-    },
-  },
+  removeTodo: (todo) => {
+    list.todos.remove(todo)
+  }
+}))
+
+const store = TodoList.create({
+  id: v4(),
+  name: '',
+  todos: [],
 });
 
-const store = createStore(todoListModel.reducer, { todos: [] }, install());
-
-export const TodoList = ({ name, actions, todos }) => (
+export const TodoListView = ({ actions, list }) => (
   <Box padding="md">
     <FlexList direction="column">
-      <h2>{name}</h2>
+      <h2>{list.name}</h2>
       <FormState>
         {({ title, description, update, clear }) => (
           <FlexList direction="column">
@@ -102,36 +67,37 @@ export const TodoList = ({ name, actions, todos }) => (
           </FlexList>
         )}
       </FormState>
-      {todos.map(todo => (
-        <ChildConnect key={todo.id} actions={itemModel.actions} dispatch={actions.updateTodo} meta={{ id: todo.id }}>
-          {childActions => (
-            <TodoItem {...todo} actions={childActions} />
-          )}
-        </ChildConnect>
+      {list.todos.map(todo => (
+        <TodoItem todo = {todo} key={todo.id} />
       ))}
     </FlexList>
   </Box>
 )
-
-const StandaloneTodoList = lifecycle({
-  componentWillMount() {
-    this.props.actions.init({ urls: { todos: 'todos' } })
-  }
-})(TodoList)
 
 const FormState = withStateHandlers({}, {
   update: (state) => (attr, value) => ({ ...state, [attr]: value }),
   clear: () => () => ({ title: '', description: '' }),
 })(({ children, ...props }) => children(props));
 
-const ListExample = () => (
-  <Provider store={store}>
-    <Connect selector={s => s} actions={todoListModel.actions}>
-      {({ actions, ...state }) => (
-        <StandaloneTodoList actions={actions} {...state} />
-      )}
-    </Connect>
-  </Provider>
-);
 
-export default ListExample;
+const FCompose = observer(TodoListView);
+
+export default ({ todoList = store })=> {
+  const actions = {
+    addTodo: todo => {
+      todoList.addTodo(Todo.create({
+        id: v4(),
+        endpoint: `/todos/${v4()}`,
+        ...todo
+      }));
+    },
+    removeTodo: todo => todoList.removeTodo(todo),
+  };
+
+  return (
+    <FCompose
+      list={todoList}
+      actions={actions}
+    />
+  )
+}

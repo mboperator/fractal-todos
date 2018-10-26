@@ -1,15 +1,10 @@
 import React from 'react';
 import { v4 } from 'uuid';
-import { Button, Input, Card, Box, FlexList, Flex } from '@procore/core-react';
-import { withStateHandlers, lifecycle } from 'recompose';
-import { createStore } from 'redux';
-import { createModule } from 'redux-modules';
-import { Provider } from 'react-redux';
-import { Cmd, loop, liftState, install } from 'redux-loop';
-
-import { todoListModel, TodoList } from './ListExample';
-import Connect from './Connect';
-import ChildConnect from './ChildConnect';
+import { Button, Input, Box, FlexList, Flex } from '@procore/core-react';
+import { withStateHandlers } from 'recompose';
+import ListExample, { TodoList } from './ListExample';
+import { types } from "mobx-state-tree";
+import { observer } from 'mobx-react';
 
 const post = (url, payload) => new Promise((resolve) =>
   setTimeout(() => {
@@ -21,51 +16,32 @@ const post = (url, payload) => new Promise((resolve) =>
   }, 500)
 )
 
-const todoListsModel = createModule({
-  name: 'todoLists',
-  initialState: {
-    lists: [],
-  },
-  composes: [liftState],
-  transformations: {
-    init: (s, { payload }) => ({ ...s, ...payload }),
-    addList: ({ lists, ...state }, { payload: list = { todos: [] } }) => {
-      const id = `optimistic-${v4()}`
-      return loop(
-        { lists: lists.concat({ ...list, id, todos: [] }), ...state },
-        Cmd.run(post, {
-          args: [state.urls.lists, list],
-          successActionCreator: response =>
-            todoListsModel.actions.updateList({ action: todoListModel.actions.init(response.body.list) }, { id }),
-          failActionCreator: todoListModel.actions.addTodoFail,
-        })
-      )
-    },
-    removeList: ({ lists, ...state }, { payload: id }) => ({ lists: lists.filter(t => t.id !== id), ...state }),
-    updateList: ({ lists, ...state }, { payload, meta }) => {
-      const listToUpdate = lists.find(lists => lists.id === meta.id);
-      const [updatedList, listEffects] = todoListModel.reducer(listToUpdate, payload.action);
-      const updatedState = {
-        lists: lists.map(t => t.id === meta.id ? updatedList : t),
-        ...state
-      };
+const ListOfListsModel = types
+  .model("ListOfLists", {
+    id: types.identifier,
+    lists: types.array(TodoList),
+  })
 
-      return loop(
-        updatedState,
-        Cmd.map(listEffects, action => todoListsModel.actions.updateList({ action }, { id: meta.id }))
-      );
-    },
+const ListOfLists = ListOfListsModel.actions(listOfLists => ({
+  addList: (list) => {
+    listOfLists.lists.push(list)
   },
-});
+  removeList: (list) => {
+    listOfLists.lists.remove(list)
+  }
+}))
 
-const store = createStore(todoListsModel.reducer, { lists: [] }, install());
+const store = ListOfLists.create({
+  id: v4(),
+  lists: [],
+})
 
 const FormState = withStateHandlers({}, {
   update: (state) => (attr, value) => ({ ...state, [attr]: value }),
   clear: () => () => ({ name: '', description: '' }),
 })(({ children, ...props }) => children(props));
 
-const List = ({ actions, lists }) => (
+const List = ({ actions, listOfLists }) => (
   <Box padding="md">
     <Flex alignItems="flex-start" justifyContent="center">
       <FormState>
@@ -98,32 +74,33 @@ const List = ({ actions, lists }) => (
     </Flex>
     <Box padding="md">
       <FlexList justifyContent="center" alignItems='center"'>
-        {lists.map(list => (
-          <ChildConnect key={list.id} actions={todoListModel.actions} dispatch={actions.updateList} meta={{ id: list.id }}>
-            {childActions => (
-              <TodoList {...list} actions={childActions} />
-            )}
-          </ChildConnect>
+        {listOfLists.lists.map(list => (
+          <ListExample key={list.id} todoList={list} />
         ))}
       </FlexList>
     </Box>
   </Box>
 )
 
-const StandaloneListOfLists = lifecycle({
-  componentWillMount() {
-    this.props.actions.init({ urls: { lists: 'todoLists' } })
-  }
-})(List)
+const FCompose = observer(List);
 
-const ListExample = () => (
-  <Provider store={store}>
-    <Connect selector={s => s} actions={todoListsModel.actions}>
-      {({ actions, ...state }) => (
-        <StandaloneListOfLists actions={actions} {...state} />
-      )}
-    </Connect>
-  </Provider>
-);
+export default ({ listOfLists = store })=> {
+  const actions = {
+    addList: list => {
+      const id = v4()
+      listOfLists.addList(TodoList.create({
+        id,
+        endpoint: `/lists/${id}`,
+        ...list
+      }));
+    },
+    removeList: list => listOfLists.removelist(list),
+  };
 
-export default ListExample;
+  return (
+    <FCompose
+      listOfLists={listOfLists}
+      actions={actions}
+    />
+  )
+}

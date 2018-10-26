@@ -5,7 +5,9 @@
   "dependencies": {
     "@procore/core-react": "^4.11.0",
     "mobx": "^5.5.2",
+    "mobx-react": "^5.3.6",
     "mobx-state-tree": "^3.7.1",
+    "mst-middlewares": "^3.7.1",
     "react": "^16.3.2",
     "react-dom": "^16.3.2",
     "react-redux": "^5.0.7",
@@ -15,7 +17,8 @@
     "recompose": "^0.27.0",
     "redux": "^4.0.0",
     "redux-loop": "^4.3.3",
-    "redux-modules": "^1.1.0"
+    "redux-modules": "^1.1.0",
+    "remotedev": "^0.2.7"
   },
   "scripts": {
     "start": "react-scripts start",

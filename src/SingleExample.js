@@ -1,11 +1,9 @@
 import React from 'react';
-import { lifecycle } from 'recompose';
+import { v4 } from 'uuid';
 import { Input, Card, Box, FlexList } from '@procore/core-react';
-import { createModule } from 'redux-modules';
-import { install, Cmd, loop, liftState } from 'redux-loop';
-import { createStore } from 'redux';
-import { Provider } from 'react-redux';
-import Connect from './Connect';
+import { types, onSnapshot, flow } from "mobx-state-tree"
+import { observer } from "mobx-react"
+import { asReduxStore, connectReduxDevtools } from "mst-middlewares"
 
 const post = (url, payload) => new Promise((resolve) =>
   setTimeout(() => {
@@ -23,68 +21,70 @@ const del = (url) => new Promise((resolve) =>
   }, 500)
 )
 
-export const itemModel = createModule({
-  name: 'todoItem',
-  initialState: { title: '', status: 'IN_PROGRESS', description : '' },
-  composes: [liftState],
-  transformations: {
-    init: (state, { payload }) =>
-      ({ ...state, urls: { self: payload.urls.self } }),
-    updateTitle: (state, { payload: title }) => [
-      { ...state, title },
-      Cmd.run(
-        post,
-        {
-          args: [state.urls.self, { title } ],
-          successActionCreator: itemModel.actions.updateSuccess,
-          failActionCreator: itemModel.actions.updateFail
-        }
-      )
-    ],
-    updateDescription: (state, { payload: description }) => [
-      { ...state, description },
-      Cmd.run(
-        post,
-        {
-          args: [state.urls.self, { description } ],
-          successActionCreator: itemModel.actions.updateSuccess,
-          failActionCreator: itemModel.actions.updateFail
-        }
-      )
-    ],
-    updateStatus: (state, { payload: status }) => [
-      { ...state, status },
-      Cmd.run(
-        post,
-        {
-          args: [state.urls.self, { status } ],
-          successActionCreator: itemModel.actions.updateSuccess,
-          failActionCreator: itemModel.actions.updateFail
-        }
-      )
-    ],
-    updateSuccess: (state, { payload: response }) =>
-      ({ ...state, ...response.body.item }),
-    updateFail: (state, { payload: error }) =>
-      ({ ...state, error }),
-    updateStatus: (state, { payload: status }) => [
-      { ...state, status },
-      Cmd.run(
-        del,
-        {
-          args: [state.urls.self],
-          successActionCreator: itemModel.actions.updateSuccess,
-          failActionCreator: itemModel.actions.updateFail
-        }
-      )
-    ],
-  },
-});
+export const TodoModel = types
+  .model("Todo", {
+    id: types.identifier,
+    title: types.string,
+    endpoint: types.string,
+    status: types.optional(
+      types.enumeration("Status", ["IN_PROGRESS", "COMPLETE"]),
+      'IN_PROGRESS'
+    ),
+    description: types.optional(types.string, ''),
+    state: types.optional(
+      types.enumeration("State", ["LOADING", "DONE", "ERROR"]),
+      'DONE'
+    ),
+  })
 
-const store = createStore(itemModel.reducer, {}, install());
+export const Todo = TodoModel.actions(todo => ({
+    updateTitle: flow(function* (title) {
+      todo.state = "LOADING"
+      try {
+        const updated = yield post(todo.endpoint, { title })
+        todo.title = title
+        todo.state = "DONE"
+      } catch (e) {
+        todo.errors = e;
+        todo.state = "ERROR"
+      }
+    }),
+    updateStatus: flow(function* (status) {
+      todo.state = "LOADING"
+      try {
+        const updated = yield post(todo.endpoint, { status })
+        todo.status = status
+        todo.state = "DONE"
+      } catch (e) {
+        todo.errors = e;
+        todo.state = "ERROR"
+      }
+    }),
+    updateDescription: flow(function* (description) {
+      todo.state = "LOADING"
+      try {
+        const updated = yield post(todo.endpoint, { description })
+        todo.description = description
+        todo.state = "DONE"
+      } catch (e) {
+        todo.errors = e;
+        todo.state = "ERROR"
+      }
+    }),
+  }));
 
+const DUMMY_ID = v4()
 
-export const TodoItem = ({
+const store = Todo.create({
+  id: DUMMY_ID,
+  endpoint: `/todos/${DUMMY_ID}`,
+  title: '',
+  status: 'IN_PROGRESS',
+  description: '',
+  state: "DONE",
+})
+
+const TodoItem = ({
   title = 'Create Mock APIs',
   status = 'IN_PROGRESS',
   description = 'Mock APIs for state management.',
@@ -113,34 +113,46 @@ export const TodoItem = ({
   </Card>
 );
 
-const StandaloneTodoItem = lifecycle({
-  componentWillMount() {
-    this.props.actions.init({ urls: { self: 'item' } })
-  }
-})(TodoItem)
+// const StandaloneTodoItem = observer(TodoItem);
+const StandaloneTodoItem = TodoItem;
 
-const SingleExample = () => (
-  <Provider store={store}>
-    <Connect selector={s => s} actions={itemModel.actions}>
-      {({ actions, ...state }) => (
-        <FlexList>
-          <FlexList direction="column">
-            <Input
-              placeholder="Title"
-              onBlur={({ target }) => actions.updateTitle(target.value)}
-              defaultValue={state.title}
-            />
-            <Input
-              placeholder="Description"
-              onBlur={({ target }) => actions.updateDescription(target.value)}
-              defaultValue={state.description}
-            />
-          </FlexList>
-          <StandaloneTodoItem {...state} actions={actions} />
-        </FlexList>
-      )}
-    </Connect>
-  </Provider>
+const SingleExample = ({ todo, actions }) => (
+  <FlexList>
+    <FlexList direction="column">
+      <Input
+        placeholder="Title"
+        onBlur={({ target }) => actions.updateTitle(target.value)}
+        defaultValue={todo.title}
+      />
+      <Input
+        placeholder="Description"
+        onBlur={({ target }) => actions.updateDescription(target.value)}
+        defaultValue={todo.description}
+      />
+    </FlexList>
+    <StandaloneTodoItem
+      title={todo.title}
+      description={todo.description}
+      status={todo.status}
+      actions={actions}
+    />
+  </FlexList>
 );
 
-export default SingleExample;
+const FCompose = observer(SingleExample);
+
+export default ({todo = store})=> {
+  const actions = {
+    updateTitle: title => todo.updateTitle(title),
+    updateStatus: status => todo.updateStatus(status),
+    updateDescription: description => todo.updateDescription(description),
+  };
+
+  return (
+    <FCompose
+      todo={todo}
+      actions={actions}
+    />
+  )
+}
+
